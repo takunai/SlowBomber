@@ -58,8 +58,8 @@ namespace BigRookGames.Weapons
                 scope.SetActive(scopeActive);
             }
 
-            // --- スペースキーが押された場合、武器を発射する ---
-            if (Input.GetKeyDown(KeyCode.Space) && (timeLastFired + shotDelay) <= Time.time)
+            // --- 右クリックが押された場合、武器を発射する ---
+            if (Input.GetMouseButtonDown(1) && (timeLastFired + shotDelay) <= Time.time)
             {
                 FireWeapon();
             }

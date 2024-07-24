@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 namespace BigRookGames.Weapons
 {
@@ -35,11 +35,17 @@ namespace BigRookGames.Weapons
         // --- タイミング ---
         [SerializeField] private float timeLastFired;
 
+        // --- 弾速 ---
+        public float initialProjectileSpeed = 10f; // 初期弾速
+        public float projectileSpeedIncrement = 2f; // 敵を倒すごとの弾速の増加量
+        private float currentProjectileSpeed;
+
         private void Start()
         {
             if (source != null) source.clip = GunShotClip;
             timeLastFired = 0;
             lastScopeState = scopeActive;
+            currentProjectileSpeed = initialProjectileSpeed; // 初期弾速を設定
         }
 
         private void Update()
@@ -82,6 +88,11 @@ namespace BigRookGames.Weapons
             if (projectilePrefab != null)
             {
                 GameObject newProjectile = Instantiate(projectilePrefab, muzzlePosition.transform.position, muzzlePosition.transform.rotation);
+                Rigidbody rb = newProjectile.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.velocity = muzzlePosition.transform.forward * currentProjectileSpeed;
+                }
             }
 
             // --- 必要に応じてゲームオブジェクトを無効にする ---
@@ -119,13 +130,18 @@ namespace BigRookGames.Weapons
             }
 
             // --- 武器から弾やヒットスキャンを発射するためのカスタムコードをここに挿入する ---
-
         }
 
         private void ReEnableDisabledProjectile()
         {
             reloadSource.Play();
             projectileToDisableOnFire.SetActive(true);
+        }
+
+        // 敵を倒したときに呼び出されるメソッド
+        public void OnEnemyKilled()
+        {
+            currentProjectileSpeed += projectileSpeedIncrement;
         }
     }
 }

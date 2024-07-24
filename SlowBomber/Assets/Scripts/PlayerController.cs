@@ -1,11 +1,13 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement; // シーン管理のための名前空間
 
 public class PlayerController : MonoBehaviour
 {
     public float moveSpeed = 10.0f; // 移動速度
     public float lookSpeed = 2.0f; // 視点移動速度
+    public string targetSceneName = "GoalScene"; // 移動先のシーン名
 
     // Start is called before the first frame update
     void Start()
@@ -40,8 +42,24 @@ public class PlayerController : MonoBehaviour
 
         // 視点の回転
         float lookX = Input.GetAxis("Mouse X") * lookSpeed;
+        float looky = Input.GetAxis("Mouse Y") * lookSpeed;
+
+
         transform.Rotate(0, lookX, 0);
+        transform.Rotate(0, looky, 0);
+        
 
         // カメラの上下回転を別のGameObject（例：カメラ自体）に適用する場合
+    }
+
+    // 特定のオブジェクトに触れたときの処理
+    void OnTriggerEnter(Collider other)
+    {
+        // オブジェクトのタグが "TargetObject" であるか確認
+        if (other.CompareTag("TargetObject"))
+        {
+            // シーンを移動
+            SceneManager.LoadScene(targetSceneName);
+        }
     }
 }

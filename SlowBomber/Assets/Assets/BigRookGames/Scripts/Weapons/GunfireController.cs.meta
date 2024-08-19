@@ -3,7 +3,16 @@ guid: 933e18ea02e20a1429dc3cdc3671dbc7
 MonoImporter:
   externalObjects: {}
   serializedVersion: 2
-  defaultReferences: []
+  defaultReferences:
+  - GunShotClip: {fileID: 8300000, guid: 40e71b0f7bd610849b40f150553f4702, type: 3}
+  - ReloadClip: {fileID: 8300000, guid: c3430338b7987524d96ce1f63db280cd, type: 3}
+  - source: {instanceID: 0}
+  - reloadSource: {instanceID: 0}
+  - muzzlePrefab: {instanceID: 0}
+  - muzzlePosition: {instanceID: 0}
+  - scope: {instanceID: 0}
+  - projectilePrefab: {instanceID: 0}
+  - projectileToDisableOnFire: {instanceID: 0}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

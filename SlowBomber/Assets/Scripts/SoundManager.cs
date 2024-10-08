@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
 public class SoundManager : MonoBehaviour
 {
     [SerializeField] AudioSource bgmAudioSource;
@@ -38,6 +37,13 @@ public class SoundManager : MonoBehaviour
         bgmAudioSource.Play();
     }
 
+    public void StopBGM()
+    {
+        if (bgmAudioSource.isPlaying)
+        {
+            bgmAudioSource.Stop();
+        }
+    }
 
     public void PlaySE(SESoundData.SE se)
     {
@@ -45,7 +51,6 @@ public class SoundManager : MonoBehaviour
         seAudioSource.volume = data.volume * seMasterVolume * masterVolume;
         seAudioSource.PlayOneShot(data.audioClip);
     }
-
 }
 
 [System.Serializable]

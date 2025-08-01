@@ -1,6 +1,4 @@
 ﻿using UnityEngine;
-using UniRx;
-using UniRx.Triggers;
 
 namespace BigRookGames.Weapons
 {
@@ -19,78 +17,75 @@ namespace BigRookGames.Weapons
 
         // --- 設定 ---
         public float shotDelay = .5f;
-        public BoolReactiveProperty rotate = new BoolReactiveProperty(true);
+        public bool rotate = true;
         public float rotationSpeed = .25f;
 
-        // --- スコープ ---
+        // --- オプション ---
         public GameObject scope;
-        public BoolReactiveProperty scopeActive = new BoolReactiveProperty(true);
+        public bool scopeActive = true;
+        private bool lastScopeState;
 
         // --- 弾 ---
         [Tooltip("武器が発射されるたびにインスタンス化する弾のゲームオブジェクト。")]
         public GameObject projectilePrefab;
-        [Tooltip("発射時に非表示にするオブジェクト（例：見た目のロケット）")]
+        [Tooltip("時々、発射時にメッシュを無効にする必要がある場合があります。例えば、ロケットが発射されると、" +
+            "新しいロケットがインスタンス化され、ロケットランチャーに取り付けられた見えるロケットは無効にされます。")]
         public GameObject projectileToDisableOnFire;
 
         // --- タイミング ---
-        private float timeLastFired;
+        [SerializeField] private float timeLastFired;
 
         // --- 弾速 ---
-        public float initialProjectileSpeed = 10f;
-        public float projectileSpeedIncrement = 2f;
+        public float initialProjectileSpeed = 10f; // 初期弾速
+        public float projectileSpeedIncrement = 2f; // 敵を倒すごとの弾速の増加量
         private float currentProjectileSpeed;
 
         private void Start()
         {
-            // 初期設定
             if (source != null) source.clip = GunShotClip;
-            currentProjectileSpeed = initialProjectileSpeed;
-            timeLastFired = 0f;
+            timeLastFired = 0;
+            lastScopeState = scopeActive;
+            currentProjectileSpeed = initialProjectileSpeed; // 初期弾速を設定
+        }
 
-            // --- 入力処理（右クリックで発射） ---
-            this.UpdateAsObservable()
-                .Where(_ => Input.GetMouseButtonDown(1))
-                .Where(_ => Time.time >= timeLastFired + shotDelay)
-                .Subscribe(_ => FireWeapon())
-                .AddTo(this);
+        private void Update()
+        {
+            // --- 回転が有効な場合、シーン内で武器を回転させる ---
+            if (rotate)
+            {
+                transform.localEulerAngles = new Vector3(transform.localEulerAngles.x, transform.localEulerAngles.y
+                                                                        + rotationSpeed, transform.localEulerAngles.z);
+            }
 
-            // --- 武器の回転処理 ---
-            this.UpdateAsObservable()
-                .Where(_ => rotate.Value)
-                .Subscribe(_ =>
-                {
-                    transform.localEulerAngles = new Vector3(
-                        transform.localEulerAngles.x,
-                        transform.localEulerAngles.y + rotationSpeed,
-                        transform.localEulerAngles.z
-                    );
-                })
-                .AddTo(this);
+            // --- スコープの状態を更新する ---
+            if (scope && lastScopeState != scopeActive)
+            {
+                lastScopeState = scopeActive;
+                scope.SetActive(scopeActive);
+            }
 
-            // --- スコープの状態を監視して反映 ---
-            scopeActive
-                .DistinctUntilChanged()
-                .Subscribe(active =>
-                {
-                    if (scope != null) scope.SetActive(active);
-                })
-                .AddTo(this);
+            // --- 右クリックが押された場合、武器を発射する ---
+            if (Input.GetMouseButtonDown(1) && (timeLastFired + shotDelay) <= Time.time)
+            {
+                FireWeapon();
+            }
         }
 
         /// <summary>
-        /// 武器を発射する処理
+        /// マズルフラッシュのインスタンスを作成します。
+        /// 複数のショットが同じオーディオソースに重ならないように、オーディオソースのインスタンスも作成します。
+        /// この関数内に弾のコードを挿入します。
         /// </summary>
-        private void FireWeapon()
+        public void FireWeapon()
         {
+
+            // --- 武器が発射された時間を記録する ---
             timeLastFired = Time.time;
 
-            // マズルフラッシュを生成
-            if (muzzlePrefab && muzzlePosition)
-            {
-                Instantiate(muzzlePrefab, muzzlePosition.transform);
-            }
+            // --- マズルフラッシュを生成する ---
+            var flash = Instantiate(muzzlePrefab, muzzlePosition.transform);
 
-            // 弾の発射
+            // --- 弾オブジェクトを発射する ---
             if (projectilePrefab != null)
             {
                 GameObject newProjectile = Instantiate(projectilePrefab, muzzlePosition.transform.position, muzzlePosition.transform.rotation);
@@ -100,57 +95,58 @@ namespace BigRookGames.Weapons
                     rb.velocity = muzzlePosition.transform.forward * currentProjectileSpeed;
                 }
 
-                // 弾の威力設定
-                var projectileScript = newProjectile.GetComponent<Projectile>();
+                // 弾の威力を設定する
+                Projectile projectileScript = newProjectile.GetComponent<Projectile>();
                 if (projectileScript != null)
                 {
-                    projectileScript.damage = 10f;
+                    projectileScript.damage = 10f; // 威力を設定
                 }
             }
 
-            // ロケットの見た目を非表示に
+            // --- 必要に応じてゲームオブジェクトを無効にする ---
             if (projectileToDisableOnFire != null)
             {
                 projectileToDisableOnFire.SetActive(false);
-                Observable.Timer(System.TimeSpan.FromSeconds(3))
-                          .Subscribe(_ => ReEnableDisabledProjectile())
-                          .AddTo(this);
+                Invoke("ReEnableDisabledProjectile", 3);
             }
 
-            // オーディオ処理
+            // --- オーディオを処理する ---
             if (source != null)
             {
+                // --- オーディオソースが武器にアタッチされていない場合、各ショットが個別のオーディオソースを持つようにする ---
                 if (source.transform.IsChildOf(transform))
                 {
                     source.Play();
                 }
                 else
                 {
+                    // --- オーディオ用のプレハブをインスタンス化し、数秒後に削除する ---
                     AudioSource newAS = Instantiate(source);
-                    if (newAS != null && newAS.outputAudioMixerGroup?.audioMixer != null)
+                    if (newAS != null && newAS.outputAudioMixerGroup != null && newAS.outputAudioMixerGroup.audioMixer != null)
                     {
-                        float pitch = Random.Range(audioPitch.x, audioPitch.y);
-                        newAS.outputAudioMixerGroup.audioMixer.SetFloat("Pitch", pitch);
-                        newAS.pitch = pitch;
+                        // --- ショットの繰り返しに変化を与えるため、ピッチを変更する ---
+                        newAS.outputAudioMixerGroup.audioMixer.SetFloat("Pitch", Random.Range(audioPitch.x, audioPitch.y));
+                        newAS.pitch = Random.Range(audioPitch.x, audioPitch.y);
+
+                        // --- 銃声を再生する ---
                         newAS.PlayOneShot(GunShotClip);
-                        Destroy(newAS.gameObject, 4f);
+
+                        // --- 数秒後に削除する。テストスクリプトのみ。プロジェクトで使用する場合はオブジェクトプールの使用を推奨します ---
+                        Destroy(newAS.gameObject, 4);
                     }
                 }
             }
+
+            // --- 武器から弾やヒットスキャンを発射するためのカスタムコードをここに挿入する ---
         }
 
-        /// <summary>
-        /// 発射後に非表示にしたオブジェクトを再表示
-        /// </summary>
         private void ReEnableDisabledProjectile()
         {
-            if (reloadSource != null) reloadSource.Play();
-            if (projectileToDisableOnFire != null) projectileToDisableOnFire.SetActive(true);
+            reloadSource.Play();
+            projectileToDisableOnFire.SetActive(true);
         }
 
-        /// <summary>
-        /// 敵を倒したときに呼び出して弾速を強化
-        /// </summary>
+        // 敵を倒したときに呼び出されるメソッド
         public void OnEnemyKilled()
         {
             currentProjectileSpeed += projectileSpeedIncrement;

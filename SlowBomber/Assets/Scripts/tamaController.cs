@@ -11,7 +11,7 @@ namespace BigRookGames.Weapons
             EnemyController enemy = collision.gameObject.GetComponent<EnemyController>();
             if (enemy != null)
             {
-                enemy.TakeDamage(damage);
+                ///enemy.TakeDamage(damage);
             }
 
             // 弾を破壊する
